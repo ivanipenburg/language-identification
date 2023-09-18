@@ -13,7 +13,7 @@ splits = {
 }
 
 def load_wili_dataset(data_dir):
-    datasets = load_dataset('text', data_files={'train': 'data/raw/x_train.txt', 'test': 'data/raw/x_test.txt'})
+    datasets = load_dataset('text', data_files={'train': 'data/x_train.txt', 'test': 'data/x_test.txt'})
 
     # Load the labels (y_train.txt, y_test.txt) and add them to the datasets
     for split in datasets:

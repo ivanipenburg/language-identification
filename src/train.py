@@ -4,7 +4,7 @@ from torch.optim import Adam
 from tqdm import tqdm
 
 from data import get_dataloaders
-from model import SimpleBiLSTM
+from models import SimpleLSTM, TextCNN
 
 
 def evaluate(dataloaders, model, config):
@@ -40,16 +40,26 @@ def train(dataloaders, model, config):
 
         evaluate(dataloaders, model, config)
 
+        torch.save(model.state_dict(), f'checkpoints/model_{epoch}.pt')
+
 
 if __name__ == '__main__':
     config = {
         'lr': 1e-3,
-        'epochs': 10,
-        'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        'epochs': 20,
+        'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+        'num_languages': 235,
+        'hidden_dim': 64,
+        'embedding_dim': 100,
     }
 
-    model = SimpleBiLSTM()
+    dev_mode = True
+    dataloaders = get_dataloaders(tokenize_datasets=True, dev_mode=dev_mode)
+
+    if dev_mode:
+        config['num_languages'] = 4
+
+    model = SimpleLSTM(config)
     model.to(config['device'])
 
-    dataloaders = get_dataloaders(tokenize_datasets=True, dev_mode=True)
     train(dataloaders, model, config)

@@ -4,7 +4,7 @@ from torch.optim import Adam
 from tqdm import tqdm
 
 from data import get_dataloaders
-from models import SimpleLSTM, TextCNN
+from models import SimpleLSTM, TextCNN, SimpleTransformer
 
 
 def evaluate(dataloaders, model, config):
@@ -27,8 +27,8 @@ def train(dataloaders, model, config):
     optimizer = Adam(model.parameters(), lr=config['lr'])
     loss_fn = nn.CrossEntropyLoss()
 
-    for epoch in tqdm(range(config['epochs'])):
-        for batch in tqdm(dataloaders['train']):
+    for epoch in tqdm(range(config['epochs']), desc='Epochs'):
+        for batch in tqdm(dataloaders['train'], desc='Iterations'):
             optimizer.zero_grad()
             labels = batch['label'].to(config['device'])
             logits = model(batch['input_ids'])
@@ -45,6 +45,7 @@ def train(dataloaders, model, config):
 
 if __name__ == '__main__':
     config = {
+        'model': 'transformer',
         'lr': 1e-3,
         'epochs': 20,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
@@ -59,7 +60,14 @@ if __name__ == '__main__':
     if dev_mode:
         config['num_languages'] = 4
 
-    model = SimpleLSTM(config)
+    if config['model'] == 'lstm':
+        model = SimpleLSTM(config)
+    elif config['model'] == 'transformer':
+        model = SimpleTransformer(config)
+    else:
+        raise NotImplementedError("Model is not implemented, check config!")
+
+    print(f"Selected {config['model']} model...")
     model.to(config['device'])
 
     train(dataloaders, model, config)

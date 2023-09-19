@@ -13,7 +13,6 @@ class SimpleLSTM(nn.Module):
         self.lstm = nn.LSTM(input_size=config['embedding_dim'], hidden_size=config['hidden_dim'], num_layers=1, batch_first=True)
         self.classifier = nn.Linear(config['hidden_dim'], config['num_languages'])
 
-        
     def forward(self, input_ids):
         embeddings = self.embedding(input_ids)
         lstm_out, _ = self.lstm(embeddings)
@@ -22,22 +21,24 @@ class SimpleLSTM(nn.Module):
         return output
 
 
-# class SimpleTransformer(nn.Module):
-#     def __init__(self):
-#         super().__init__()
-#         self.embedding = nn.Embedding(num_tokens, EMBEDDING_DIM)
-#         self.transformer = nn.Transformer(d_model=EMBEDDING_DIM, nhead=4, num_encoder_layers=2, num_decoder_layers=2, batch_first=True)
-#         self.classifier = nn.Linear(EMBEDDING_DIM, NUMBER_OF_CLASSES)
+class SimpleTransformer(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.embedding = nn.Embedding(num_tokens, config['embedding_dim'])
+        encoder_layer = nn.TransformerEncoderLayer(d_model=config['embedding_dim'], nhead=4)
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        nn.Transformer(d_model=config['embedding_dim'], nhead=4, num_encoder_layers=2, num_decoder_layers=2, batch_first=True)
+        self.classifier = nn.Linear(config['embedding_dim'], config['num_languages'])
 
-#     def forward(self, input_ids):
-#         input_ids = self.embedding(input_ids)
-#         input_ids = input_ids.permute(1, 0, 2)
-#         outputs = self.transformer(input_ids, input_ids)
-#         outputs = outputs.permute(1, 0, 2)
-#         outputs = outputs[:, -1, :]
-#         logits = self.classifier(outputs)
-#         return logits
-    
+    def forward(self, input_ids):
+        input_ids = self.embedding(input_ids)
+        input_ids = input_ids.permute(1, 0, 2)
+        outputs = self.encoder(input_ids)
+        outputs = outputs.permute(1, 0, 2)
+        outputs = torch.max(outputs, dim=1)[0]
+        logits = self.classifier(outputs)
+        return logits
+
 
 class TextCNN(nn.Module):
     def __init__(self, config):

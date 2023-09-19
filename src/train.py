@@ -14,7 +14,7 @@ def evaluate(dataloaders, model, config):
 
         for batch in tqdm(dataloaders['test']):
             labels = batch['label'].to(config['device'])
-            logits = model(batch['input_ids'])
+            logits = model(batch['input_ids'].to(config['device']))
             predictions = torch.argmax(logits, dim=-1)
             correct += torch.sum(predictions == labels)
             total += predictions.shape[0]
@@ -31,7 +31,7 @@ def train(dataloaders, model, config):
         for batch in tqdm(dataloaders['train'], desc='Iterations'):
             optimizer.zero_grad()
             labels = batch['label'].to(config['device'])
-            logits = model(batch['input_ids'])
+            logits = model(batch['input_ids'].to(config['device']))
             loss = loss_fn(logits, labels)
             loss.backward()
             optimizer.step()

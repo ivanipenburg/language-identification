@@ -53,9 +53,9 @@ def train_BPE(languages):
     tokenizer.train(file, trainer)
     tokenizer.save(TOKENIZER_FILE)
 
-def preprocess_datasets(datasets, trained_BPE, languages):
+def preprocess_datasets(datasets, train_BPE, languages):
 
-    if not trained_BPE:
+    if train_BPE:
        train_BPE(languages)
 
     tokenizer = PreTrainedTokenizerFast(tokenizer_file=TOKENIZER_FILE, model_max_length=512)
@@ -90,7 +90,7 @@ def preprocess_datasets(datasets, trained_BPE, languages):
 
     return tokenized_datasets
 
-def get_dataloaders(tokenize_datasets=True, dev_mode=False, trained_BPE=False):
+def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True):
     """
     Function that loads the dataloaders
 
@@ -114,7 +114,7 @@ def get_dataloaders(tokenize_datasets=True, dev_mode=False, trained_BPE=False):
 
     # Preprocess the dataset
     if tokenize_datasets:
-        datasets = preprocess_datasets(datasets, trained_BPE, languages)
+        datasets = preprocess_datasets(datasets, train_BPE, languages)
 
     # Create the dataloaders
     dataloaders = {

@@ -6,6 +6,7 @@ from tqdm import tqdm
 from data import get_dataloaders
 from models import SimpleLSTM, TextCNN, SimpleTransformer
 
+CHECKPOINT_PATH = "/media/jessebelleman/DATA2/checkpoints/"
 
 def evaluate(dataloaders, model, config):
     with torch.no_grad():
@@ -40,7 +41,7 @@ def train(dataloaders, model, config):
 
         evaluate(dataloaders, model, config)
 
-        torch.save(model.state_dict(), f'checkpoints/model_{epoch}.pt')
+        torch.save(model.state_dict(), f'{CHECKPOINT_PATH}model_{epoch}.pt')
 
 
 if __name__ == '__main__':

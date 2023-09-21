@@ -56,6 +56,9 @@ def preprocess_datasets(datasets):
         for split in tokenized_datasets
     }
 
+    for split in tokenized_datasets:
+        tokenized_datasets[split].vocab_size = tokenizer.vocab_size
+
     return tokenized_datasets
 
 def get_dataloaders(tokenize_datasets=True, dev_mode=False):

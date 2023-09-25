@@ -13,12 +13,12 @@ class SimpleLSTM(nn.Module):
         self.lstm = nn.LSTM(input_size=config['embedding_dim'], hidden_size=config['hidden_dim'], num_layers=1, batch_first=True)
         self.classifier = nn.Linear(config['hidden_dim'], config['num_languages'])
 
-    def forward(self, input_ids):
+    def forward(self, input_ids, hidden=None):
         embeddings = self.embedding(input_ids)
-        lstm_out, _ = self.lstm(embeddings)
+        lstm_out, hidden = self.lstm(embeddings, hidden)
         lstm_out = torch.max(lstm_out, dim=1)[0]
         output = self.classifier(lstm_out)
-        return output
+        return output, hidden
 
 
 class SimpleTransformer(nn.Module):
@@ -30,14 +30,19 @@ class SimpleTransformer(nn.Module):
         nn.Transformer(d_model=config['embedding_dim'], nhead=4, num_encoder_layers=2, num_decoder_layers=2, batch_first=True)
         self.classifier = nn.Linear(config['embedding_dim'], config['num_languages'])
 
-    def forward(self, input_ids):
+    def forward(self, input_ids, hidden=None):
         input_ids = self.embedding(input_ids)
         input_ids = input_ids.permute(1, 0, 2)
-        outputs = self.encoder(input_ids)
+
+        if hidden is not None:
+            outputs = self.encoder(input_ids, src_key_padding_mask=hidden)
+        else:
+            outputs = self.encoder(input_ids)
+    
         outputs = outputs.permute(1, 0, 2)
         outputs = torch.max(outputs, dim=1)[0]
         logits = self.classifier(outputs)
-        return logits
+        return logits, hidden
 
 
 class TextCNN(nn.Module):

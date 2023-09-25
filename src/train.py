@@ -4,9 +4,9 @@ from torch.optim import Adam
 from tqdm import tqdm
 
 from data import get_dataloaders
-from models import SimpleLSTM, TextCNN, SimpleTransformer
+from models import SimpleLSTM, SimpleTransformer, TextCNN
 
-CHECKPOINT_PATH = "/media/jessebelleman/DATA2/checkpoints/"
+CHECKPOINT_PATH = "checkpoints/"
 
 def evaluate(dataloaders, model, config):
     with torch.no_grad():
@@ -15,7 +15,7 @@ def evaluate(dataloaders, model, config):
 
         for batch in tqdm(dataloaders['test']):
             labels = batch['label'].to(config['device'])
-            logits = model(batch['input_ids'].to(config['device']))
+            logits, _ = model(batch['input_ids'].to(config['device']))
             predictions = torch.argmax(logits, dim=-1)
             correct += torch.sum(predictions == labels)
             total += predictions.shape[0]
@@ -32,7 +32,7 @@ def train(dataloaders, model, config):
         for batch in tqdm(dataloaders['train'], desc='Iterations'):
             optimizer.zero_grad()
             labels = batch['label'].to(config['device'])
-            logits = model(batch['input_ids'].to(config['device']))
+            logits, _ = model(batch['input_ids'].to(config['device']))
             loss = loss_fn(logits, labels)
             loss.backward()
             optimizer.step()
@@ -46,12 +46,12 @@ def train(dataloaders, model, config):
 
 if __name__ == '__main__':
     config = {
-        'model': 'transformer',
+        'model': 'lstm',
         'lr': 1e-3,
-        'epochs': 20,
+        'epochs': 5,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
         'num_languages': 235,
-        'hidden_dim': 64,
+        'hidden_dim': 128,
         'embedding_dim': 100,
     }
 
@@ -66,9 +66,9 @@ if __name__ == '__main__':
     elif config['model'] == 'transformer':
         model = SimpleTransformer(config)
     else:
-        raise NotImplementedError("Model is not implemented, check config!")
+        raise NotImplementedError('Model is not implemented, check config!')
 
-    print(f"Selected {config['model']} model...")
+    print(f'Selected {config['model']} model...')
     model.to(config['device'])
 
     train(dataloaders, model, config)

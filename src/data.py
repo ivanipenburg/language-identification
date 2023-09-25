@@ -2,12 +2,11 @@ import os
 
 from datasets import load_dataset
 from torch.utils.data import DataLoader
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import BpeTrainer
-from transformers import PreTrainedTokenizerFast
 
 DATA_DIR = 'data'
 DATASET_NAME = 'WiLI'
@@ -53,9 +52,9 @@ def train_BPE(languages):
     tokenizer.train(file, trainer)
     tokenizer.save(TOKENIZER_FILE)
 
-def preprocess_datasets(datasets, train_BPE, languages):
+def preprocess_datasets(datasets, train_BPE_flag, languages):
 
-    if train_BPE:
+    if train_BPE_flag:
        train_BPE(languages)
 
     tokenizer = PreTrainedTokenizerFast(tokenizer_file=TOKENIZER_FILE, model_max_length=512)

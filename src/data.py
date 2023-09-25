@@ -3,9 +3,15 @@ import os
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
+from tokenizers import Tokenizer
+from tokenizers.models import BPE
+from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.trainers import BpeTrainer
+from transformers import PreTrainedTokenizerFast
 
 DATA_DIR = 'data'
 DATASET_NAME = 'WiLI'
+TOKENIZER_FILE = 'src/BPE_trained.json'
 
 splits = {
     'train': 'x_train.txt',
@@ -25,9 +31,35 @@ def load_wili_dataset(data_dir):
 
     return datasets
 
-def preprocess_datasets(datasets):
-    # Tokenize and preprocess the data
-    tokenizer = AutoTokenizer.from_pretrained('bert-base-multilingual-cased')
+def train_BPE(languages):
+
+    # create a .txt file that only contains the specific languages on which we want to train the BPE tokenizer
+    output_path = os.path.join(DATA_DIR, 'BPE_train.txt')
+    with open(output_path, 'w', encoding='utf-8') as output_file:
+        with open(os.path.join(DATA_DIR,'x_train.txt' ), 'r', encoding='utf-8') as x_file, open(os.path.join(DATA_DIR,'y_train.txt' ), 'r', encoding='utf-8') as y_file:
+            for x1, y1 in zip(x_file, y_file):
+                x1 = x1.strip()
+                y1 = y1.strip()
+                if y1 in languages:
+                    output_file.write(x1 + '\n')
+
+    unk_token = "<UNK>"  # token for unknown words
+    spl_tokens = ["<UNK>", "<SEP>", "<MASK>", "<CLS>"]
+    file = [output_path]
+
+    tokenizer = Tokenizer(BPE(unk_token = unk_token))
+    tokenizer.pre_tokenizer = Whitespace()
+    trainer = BpeTrainer(special_tokens = spl_tokens)
+    tokenizer.train(file, trainer)
+    tokenizer.save(TOKENIZER_FILE)
+
+def preprocess_datasets(datasets, train_BPE, languages):
+
+    if train_BPE:
+       train_BPE(languages)
+
+    tokenizer = PreTrainedTokenizerFast(tokenizer_file=TOKENIZER_FILE, model_max_length=512)
+    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 
     label_to_int = {label: i for i, label in enumerate(sorted(set(datasets['train']['label']).union(set(datasets['test']['label']))))}
     print(label_to_int)
@@ -58,7 +90,18 @@ def preprocess_datasets(datasets):
 
     return tokenized_datasets
 
-def get_dataloaders(tokenize_datasets=True, dev_mode=False):
+def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True):
+    """
+    Function that loads the dataloaders
+
+    Args:
+    - tokenize_datasets (Boolean): whether or not to pre-process the dataset
+    - dev_mode (Boolean): 
+    - trained_BPE: should contain the datapath to a pre_trained BPE (string) or else 
+    will have the Boolean value False 
+    """
+
+
     # Load the dataset
     datasets = load_wili_dataset(DATA_DIR)
 
@@ -71,7 +114,7 @@ def get_dataloaders(tokenize_datasets=True, dev_mode=False):
 
     # Preprocess the dataset
     if tokenize_datasets:
-        datasets = preprocess_datasets(datasets)
+        datasets = preprocess_datasets(datasets, train_BPE, languages)
 
     # Create the dataloaders
     dataloaders = {

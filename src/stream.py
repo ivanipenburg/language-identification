@@ -1,21 +1,20 @@
 import torch
-import torch.nn as nn
-from transformers import AutoTokenizer
 
 from data import get_dataloaders
-from models import SimpleLSTM
+from models import SimpleLSTM, SimpleTransformer
 
 
 def predict_streaming_batch(batch, model):
     model.eval()
-    hx = None
+    hidden = None
     predictions = []
     confidences = []
     with torch.no_grad():
         for input_id in batch['input_ids']:
-            input_id = torch.tensor([input_id])
-            logits, hx = model(input_id, hx)
-            
+            input_id = input_id.unsqueeze(0)
+
+            labels = batch['label'].to(config['device'])
+            logits, hidden = model(input_id.to(config['device']), hidden)
             prediction = torch.argmax(logits, dim=-1)
             confidence = torch.softmax(logits, dim=-1)
             predictions.append(prediction)
@@ -31,18 +30,30 @@ def predict_streaming(dataloaders, model):
         print(confidences)
         break
     
-
-
 if __name__ == '__main__':
     config = {
-        'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        'model': 'lstm',
+        'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+        'num_languages': 235,
+        'hidden_dim': 128 ,
+        'embedding_dim': 100,
+        'model_checkpoint': 'checkpoints/model_4.pt'
     }
-    model = SimpleBiLSTM()
-    model.load_state_dict(torch.load('checkpoints/model.pt'))
-    model.eval()
 
+    dev_mode = True
+
+    dataloaders = get_dataloaders(tokenize_datasets=True, dev_mode=dev_mode)
+
+    if config['model'] == 'lstm':        
+        model = SimpleLSTM(config)
+    elif config['model'] == 'transformer':
+        model = SimpleTransformer(config)
+    else:
+        raise NotImplementedError('Model not implemented')
+    
+    model.load_state_dict(torch.load(config['model_checkpoint']))
     model.to(config['device'])
 
-    dataloaders = get_dataloaders(tokenize_datasets=True, dev_mode=True)
+    predict_streaming(dataloaders, model)
 
 

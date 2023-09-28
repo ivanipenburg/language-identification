@@ -12,8 +12,8 @@
 module purge
 module load 2022
 
-cd $HOME/language_identification
+cd $HOME/language-identification/src
 
 source activate lang_id
 
-srun python3 -u src/train.py
+srun python3 -u train.py

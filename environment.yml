@@ -1,0 +1,17 @@
+name: lang_id
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10.6
+  - pip=22.2.2
+  - pytorch-cuda=11.7
+  - pytorch=1.13.0
+  - torchvision=0.14.0
+  - torchaudio=0.13.0
+  - pip:
+    - tqdm==4.66.1
+    - datasets==2.14.4
+    - transformers==4.33.0

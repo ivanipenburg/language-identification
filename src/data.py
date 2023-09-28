@@ -10,7 +10,7 @@ from tokenizers.trainers import BpeTrainer
 
 DATA_DIR = 'data'
 DATASET_NAME = 'WiLI'
-TOKENIZER_FILE = 'src/BPE_trained.json'
+TOKENIZER_FILE = 'BPE_trained.json'
 
 splits = {
     'train': 'x_train.txt',
@@ -30,7 +30,7 @@ def load_wili_dataset(data_dir):
 
     return datasets
 
-def train_BPE(languages):
+def train_BPE(languages=None):
 
     # create a .txt file that only contains the specific languages on which we want to train the BPE tokenizer
     output_path = os.path.join(DATA_DIR, 'BPE_train.txt')
@@ -39,7 +39,7 @@ def train_BPE(languages):
             for x1, y1 in zip(x_file, y_file):
                 x1 = x1.strip()
                 y1 = y1.strip()
-                if y1 in languages:
+                if languages is None or y1 in languages:
                     output_file.write(x1 + '\n')
 
     unk_token = "<UNK>"  # token for unknown words
@@ -52,7 +52,7 @@ def train_BPE(languages):
     tokenizer.train(file, trainer)
     tokenizer.save(TOKENIZER_FILE)
 
-def preprocess_datasets(datasets, train_BPE_flag, languages):
+def preprocess_datasets(datasets, train_BPE_flag, languages=None):
 
     if train_BPE_flag:
        train_BPE(languages)
@@ -65,8 +65,8 @@ def preprocess_datasets(datasets, train_BPE_flag, languages):
 
     def tokenize(batch):
         tokenized_batch = tokenizer(batch['text'], padding='max_length', truncation=True)
-        tokenized_batch['label'] = [label_to_int[label] for label in batch['label']]  
-        
+        tokenized_batch['label'] = [label_to_int[label] for label in batch['label']]
+
         return tokenized_batch
 
     print('Tokenizing datasets...')
@@ -95,14 +95,15 @@ def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True):
 
     Args:
     - tokenize_datasets (Boolean): whether or not to pre-process the dataset
-    - dev_mode (Boolean): 
-    - trained_BPE: should contain the datapath to a pre_trained BPE (string) or else 
-    will have the Boolean value False 
+    - dev_mode (Boolean):
+    - trained_BPE: should contain the datapath to a pre_trained BPE (string) or else
+    will have the Boolean value False
     """
 
 
     # Load the dataset
     datasets = load_wili_dataset(DATA_DIR)
+    languages = None
 
     # Test on only 4 languages
     if dev_mode:

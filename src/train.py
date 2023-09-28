@@ -55,7 +55,7 @@ if __name__ == '__main__':
         'embedding_dim': 100,
     }
 
-    dev_mode = True
+    dev_mode = False
     dataloaders = get_dataloaders(tokenize_datasets=True, dev_mode=dev_mode)
 
     if dev_mode:
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError('Model is not implemented, check config!')
 
-    print(f'Selected {config['model']} model...')
+    print(f"Selected {config['model']} model...")
     model.to(config['device'])
 
     train(dataloaders, model, config)

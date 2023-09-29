@@ -18,12 +18,7 @@ def performance_over_tokens(model, dataloaders, config):
     correct_per_token = []
     total_per_token = []
 
-    # count = 0
-
     for batch in tqdm(dataloaders['test']):
-        # count += 1
-        # if count > 200:
-        #     break
         predictions, labels, confidences = predict_streaming_batch(batch, model, config)
 
         for i, prediction in enumerate(predictions[:64]):

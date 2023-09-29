@@ -4,30 +4,34 @@ from data import get_dataloaders
 from models import SimpleLSTM, SimpleTransformer
 
 
-def predict_streaming_batch(batch, model):
+def predict_streaming_batch(batch, model, config):
     model.eval()
     hidden = None
     predictions = []
     confidences = []
     with torch.no_grad():
-        for input_id in batch['input_ids']:
-            input_id = input_id.unsqueeze(0)
+        for input_id in batch['input_ids'][0]:
+            # If input_id is 30000, it is a padding token
+            if input_id == 30000:
+                break
 
+            input_id = input_id.unsqueeze(0).unsqueeze(0)
             labels = batch['label'].to(config['device'])
             logits, hidden = model(input_id.to(config['device']), hidden)
             prediction = torch.argmax(logits, dim=-1)
             confidence = torch.softmax(logits, dim=-1)
             predictions.append(prediction)
             confidences.append(confidence)
-    return predictions, confidences
+    return predictions, labels, confidences
 
 
 
 def predict_streaming(dataloaders, model):
     for batch in dataloaders['test']:
-        predictions, confidences = predict_streaming_batch(batch, model)
+        predictions, labels, confidences = predict_streaming_batch(batch, model)
         print(predictions)
         print(confidences)
+        print(labels)
         break
     
 if __name__ == '__main__':

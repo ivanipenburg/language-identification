@@ -89,7 +89,7 @@ def preprocess_datasets(datasets, train_BPE_flag, languages=None):
 
     return tokenized_datasets
 
-def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True):
+def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batch_size=32):
     """
     Function that loads the dataloaders
 
@@ -120,7 +120,7 @@ def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True):
     dataloaders = {
         split: DataLoader(
             datasets[split],
-            batch_size=32,
+            batch_size=batch_size,
             shuffle=True,
         )
         for split in datasets

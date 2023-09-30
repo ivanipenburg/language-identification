@@ -4,7 +4,7 @@ from torch.optim import Adam
 from tqdm import tqdm
 
 from data import get_dataloaders
-from models import SimpleLSTM, SimpleTransformer, TextCNN
+from models import SimpleLSTM, SimpleTransformer, TextCNN, get_parameter_count
 
 import argparse
 
@@ -16,7 +16,7 @@ def evaluate(dataloaders, model, config):
         correct = 0
         total = 0
 
-        for batch in tqdm(dataloaders['test']):
+        for batch in tqdm(dataloaders['test'], disable=True):
             labels = batch['label'].to(config['device'])
             logits, _ = model(batch['input_ids'].to(config['device']))
             predictions = torch.argmax(logits, dim=-1)
@@ -32,7 +32,7 @@ def train(dataloaders, model, config):
     loss_fn = nn.CrossEntropyLoss()
 
     for epoch in tqdm(range(config['epochs']), desc='Epochs'):
-        for batch in tqdm(dataloaders['train'], desc='Iterations'):
+        for batch in tqdm(dataloaders['train'], desc='Iterations', disable=True):
             optimizer.zero_grad()
             labels = batch['label'].to(config['device'])
             logits, _ = model(batch['input_ids'].to(config['device']))
@@ -53,8 +53,13 @@ def main(args):
         'epochs': args.epochs,
         'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
         'num_languages': 235,
-        'hidden_dim': 128,
-        'embedding_dim': 100,
+        'embedding_dim': 128,
+
+        'lstm_hidden_dim': 512,
+        'lstm_num_layers': 2,
+
+        'transformer_n_heads': 8,
+        'transformer_layers': 2
     }
 
     dataloaders = get_dataloaders(tokenize_datasets=args.tokenize_datasets,
@@ -70,7 +75,8 @@ def main(args):
     else:
         raise NotImplementedError('Model is not implemented!')
 
-    print(f"Selected {config['model']} model...")
+    n_params = get_parameter_count(model) / 10e6
+    print(f"Selected {config['model']} model with {n_params}M trainable params...")
     model.to(config['device'])
 
     train(dataloaders, model, config)

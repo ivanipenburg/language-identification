@@ -9,7 +9,7 @@ from models import SimpleLSTM, SimpleTransformer, TextCNN, get_parameter_count
 import argparse
 
 
-CHECKPOINT_PATH = "checkpoints/"
+CHECKPOINT_PATH = "src/checkpoints/"
 
 def evaluate(dataloaders, model, config):
     with torch.no_grad():

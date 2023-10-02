@@ -88,7 +88,7 @@ def preprocess_datasets(datasets, train_BPE_flag, languages=None):
     tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 
     label_to_int = {label: i for i, label in enumerate(sorted(set(datasets['train']['label']).union(set(datasets['test']['label']))))}
-    print(label_to_int)
+    int_to_label = {i: label for label, i in label_to_int.items()}
 
     def tokenize(batch):
         tokenized_batch = tokenizer(batch['text'], padding='max_length', truncation=True)
@@ -114,7 +114,7 @@ def preprocess_datasets(datasets, train_BPE_flag, languages=None):
         for split in tokenized_datasets
     }
 
-    return tokenized_datasets
+    return tokenized_datasets, int_to_label
 
 def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batch_size=32):
     """
@@ -141,7 +141,7 @@ def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batc
 
     # Preprocess the dataset
     if tokenize_datasets:
-        datasets = preprocess_datasets(datasets, train_BPE, languages)
+        datasets, int_to_label = preprocess_datasets(datasets, train_BPE, languages)
 
     # Create the dataloaders
     dataloaders = {
@@ -153,4 +153,4 @@ def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batc
         for split in datasets
     }
 
-    return dataloaders
+    return dataloaders, int_to_label

@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     dev_mode = True
 
-    dataloaders = get_dataloaders(tokenize_datasets=True, dev_mode=dev_mode)
+    dataloaders, _ = get_dataloaders(tokenize_datasets=True, dev_mode=dev_mode)
 
     if config['model'] == 'lstm':        
         model = SimpleLSTM(config)

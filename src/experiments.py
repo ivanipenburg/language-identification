@@ -5,10 +5,49 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from data import get_dataloaders
+from data import get_dataloaders, LANGUAGE_CODES
 from models import SimpleLSTM, SimpleTransformer
 from stream import predict_streaming_batch
 
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+
+def plot_confusion_matrix(model, dataloaders, config, languages):
+    """
+    Function that creates the confusion matrix
+    """
+
+    model.to(config['device'])
+    model.eval()
+    hidden = None
+
+    true_labels = []
+    predicted_labels = []
+
+    with torch.no_grad():
+        for batch in tqdm(dataloaders['test']):
+            inputs = batch['input_ids'].to(config['device'])
+            labels = batch['label'].to(config['device'])
+
+            logits, hidden = model(inputs.to(config['device']), hidden)
+            prediction = torch.argmax(logits, dim=-1)
+
+            true_labels.extend(labels.cpu().numpy())
+            predicted_labels.extend(prediction.cpu().numpy())
+
+    # Compute the confusion matrix
+    confusion = confusion_matrix(true_labels, predicted_labels, labels=np.arange(len(languages)))
+
+    # Create a ConfusionMatrixDisplay
+    disp = ConfusionMatrixDisplay(confusion, display_labels=languages)
+
+    # Plot the confusion matrix
+    plt.figure(figsize=(10, 8))
+    disp.plot(cmap=plt.cm.Blues, values_format='d')
+    plt.title('Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.show()
 
 def performance_over_tokens(model, dataloaders, config):
     """
@@ -51,16 +90,25 @@ def performance_over_tokens(model, dataloaders, config):
 
 
 def main(args):
+
     config = {
         'model': args.model,
-        'device': 'cuda' if torch.cuda.is_available() else 'cpu',
+        'device': torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
         'num_languages': 235,
-        'hidden_dim': 128,
-        'embedding_dim': 100,
+        'embedding_dim': 128,
+
+        'lstm_hidden_dim': 512,
+        'lstm_num_layers': 2,
+
+        'transformer_n_heads': 8,
+        'transformer_layers': 2
     }
 
     if args.dev_mode:
         config['num_languages'] = 4
+        languages = ['eng', 'deu', 'fra', 'nld']
+    else:
+        languages = LANGUAGE_CODES
 
     dataloaders = get_dataloaders(tokenize_datasets=args.tokenize_datasets,
                                     dev_mode=args.dev_mode, batch_size=1)
@@ -74,6 +122,9 @@ def main(args):
 
     if args.experiment == 'performance_over_tokens':
         performance_over_tokens(model, dataloaders, config)
+    elif args.experiment == 'confusion_matrix':
+        assert args.tokenize_datasets, 'Need a tokenized dataset, use flag --tokenize_datasets'
+        plot_confusion_matrix(model, dataloaders, config, languages)
     elif args.experiment == 'test':
         print('Running testing experiment...')
     elif args.experiment == 'train_test':
@@ -98,7 +149,7 @@ if __name__ == '__main__':
         '--model_checkpoint',
         type=str,
         help='Model checkpoint to use',
-        default='checkpoints/model_4.pt'
+        default='src/checkpoints/model_4.pt'
     )
 
     parser.add_argument(

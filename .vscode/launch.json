@@ -15,11 +15,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--experiment",
-                "confusion_matrix",
-                "--model",
-                "lstm",
-                "--dev_mode",
-                "--tokenize_datasets"
+                "confusion_matrix"
             ],
             "justMyCode": true
         }

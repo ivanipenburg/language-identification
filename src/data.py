@@ -1,5 +1,7 @@
 import os
 import pickle
+import pandas as pd
+from collections import defaultdict
 
 from datasets import load_dataset
 from torch.utils.data import DataLoader
@@ -13,37 +15,41 @@ DATA_DIR = 'data'
 DATASET_NAME = 'WiLI'
 TOKENIZER_FILE = 'BPE_trained.json'
 
-LANGUAGE_CODES = [
-    'ace', 'afr', 'als', 'amh', 'ang', 'ara', 'arg', 'arz', 'asm', 'ast',
-    'ava', 'aym', 'azb', 'aze', 'bak', 'bar', 'bcl', 'be-tarask', 'bel', 'ben',
-    'bho', 'bjn', 'bod', 'bos', 'bpy', 'bre', 'bul', 'bxr', 'cat', 'cbk',
-    'cdo', 'ceb', 'ces', 'che', 'chr', 'chv', 'ckb', 'cor', 'cos', 'crh',
-    'csb', 'cym', 'dan', 'deu', 'diq', 'div', 'dsb', 'dty', 'egl', 'ell',
-    'eng', 'epo', 'est', 'eus', 'ext', 'fao', 'fas', 'fin', 'fra', 'frp',
-    'fry', 'fur', 'gag', 'gla', 'gle', 'glg', 'glk', 'glv', 'grn', 'guj',
-    'hak', 'hat', 'hau', 'hbs', 'heb', 'hif', 'hin', 'hrv', 'hsb', 'hun',
-    'hye', 'ibo', 'ido', 'ile', 'ilo', 'ina', 'ind', 'isl', 'ita', 'jam',
-    'jav', 'jbo', 'jpn', 'kaa', 'kab', 'kan', 'kat', 'kaz', 'kbd', 'khm',
-    'kin', 'kir', 'koi', 'kok', 'kom', 'kor', 'krc', 'ksh', 'kur', 'lad',
-    'lao', 'lat', 'lav', 'lez', 'lij', 'lim', 'lin', 'lit', 'lmo', 'lrc',
-    'ltg', 'ltz', 'lug', 'lzh', 'mai', 'mal', 'map-bms', 'mar', 'mdf', 'mhr',
-    'min', 'mkd', 'mlg', 'mlt', 'mon', 'mri', 'mrj', 'msa', 'mwl', 'mya',
-    'myv', 'mzn', 'nan', 'nap', 'nav', 'nci', 'nds', 'nds-nl', 'nep', 'new',
-    'nld', 'nno', 'nob', 'nrm', 'nso', 'oci', 'olo', 'ori', 'orm', 'oss',
-    'pag', 'pam', 'pan', 'pap', 'pcd', 'pdc', 'pfl', 'pnb', 'pol', 'por',
-    'pus', 'que', 'roa-tara', 'roh', 'ron', 'rue', 'rup', 'rus', 'sah',
-    'san', 'scn', 'sco', 'sgs', 'sin', 'slk', 'slv', 'sme', 'sna', 'snd',
-    'som', 'spa', 'sqi', 'srd', 'srn', 'srp', 'stq', 'sun', 'swa', 'swe',
-    'szl', 'tam', 'tat', 'tcy', 'tel', 'tet', 'tgk', 'tgl', 'tha', 'ton',
-    'tsn', 'tuk', 'tur', 'tyv', 'udm', 'uig', 'ukr', 'urd', 'uzb', 'vec',
-    'vep', 'vie', 'vls', 'vol', 'vro', 'war', 'wln', 'wol', 'wuu', 'xho',
-    'xmf', 'yid', 'yor', 'zea', 'zh-yue', 'zho'
-]
-
 splits = {
     'train': 'x_train.txt',
     'test': 'x_test.txt'
 }
+
+def dict_language_groups():
+    df = pd.read_csv('data/labels.csv', sep=';')
+    dict_language_codes = df.reset_index().set_index('English').to_dict()['index']
+
+    language_groups = dict()
+    cyrillic_list = df[df['Writing system']=='Cyrillic']['English'].to_list()
+    sino_tibetan_list = df[df['Language family']=='Sino-Tibetan']['English'].to_list()
+    west_germanic_list = ['Afrikaans', 'Dutch', 'English', 'German', 'Western Frisian', 'Yiddish']
+    old_norse_list = ['Danish', 'Faroese', 'Icelandic', 'Norwegian Nynorsk', 'Swedish']
+
+    cyrillic_mapping = defaultdict(lambda:len(cyrillic_list))
+    for i, language in enumerate(cyrillic_list):
+        cyrillic_mapping[dict_language_codes[language]] = i
+    sino_tibetan_mapping = defaultdict(lambda:len(sino_tibetan_list))
+    for i, language in enumerate(sino_tibetan_list):
+        sino_tibetan_mapping[dict_language_codes[language]] = i
+    west_germanic_mapping = defaultdict(lambda:len(west_germanic_list))
+    for i, language in enumerate(west_germanic_list):
+        west_germanic_mapping[dict_language_codes[language]] = i
+    old_norse_mapping = defaultdict(lambda:len(old_norse_list))
+    for i, language in enumerate(old_norse_list):
+        old_norse_mapping[dict_language_codes[language]] = i
+
+    language_groups['Cyrllic'] = {'list': cyrillic_list, 'mapping_dict':cyrillic_mapping}
+    language_groups['Sino Tibetan'] = {'list': sino_tibetan_list, 'mapping_dict':sino_tibetan_mapping}
+    language_groups['West Germanic'] = {'list': west_germanic_list, 'mapping_dict':west_germanic_mapping}
+    language_groups['Old Norse'] = {'list': old_norse_list, 'mapping_dict':old_norse_mapping}
+
+    return language_groups
+
 
 def load_wili_dataset(data_dir):
     datasets = load_dataset('text', data_files={'train': 'data/x_train.txt', 'test': 'data/x_test.txt'})

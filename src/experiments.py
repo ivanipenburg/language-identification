@@ -5,14 +5,14 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from data import get_dataloaders, LANGUAGE_CODES
+from data import get_dataloaders, dict_language_groups
 from models import SimpleLSTM, SimpleTransformer
 from stream import predict_streaming_batch
 
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
-def plot_confusion_matrix(model, dataloaders, config, languages):
+def plot_confusion_matrix(model, dataloaders, config):
     """
     Function that creates the confusion matrix
     """
@@ -35,19 +35,31 @@ def plot_confusion_matrix(model, dataloaders, config, languages):
             true_labels.extend(labels.cpu().numpy())
             predicted_labels.extend(prediction.cpu().numpy())
 
-    # Compute the confusion matrix
-    confusion = confusion_matrix(true_labels, predicted_labels, labels=np.arange(len(languages)))
+    language_groups = dict_language_groups()
 
-    # Create a ConfusionMatrixDisplay
-    disp = ConfusionMatrixDisplay(confusion, display_labels=languages)
+    for language_group in language_groups:
+        mapped_true_labels = [language_groups[language_group]['mapping_dict'][label] for label in true_labels]
+        mapped_predicted_labels = [language_groups[language_group]['mapping_dict'][label] for label in predicted_labels]
+        languages = language_groups[language_group]['list']
+        labels = np.arange(len(languages))
 
-    # Plot the confusion matrix
-    plt.figure(figsize=(10, 8))
-    disp.plot(cmap=plt.cm.Blues, values_format='d')
-    plt.title('Confusion Matrix')
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.show()
+        # Compute the confusion matrix
+        confusion = confusion_matrix(mapped_true_labels, mapped_predicted_labels, labels=labels)
+
+        # Create a ConfusionMatrixDisplay
+        disp = ConfusionMatrixDisplay(confusion, display_labels=languages)
+
+        # Plot the confusion matrix
+        plt.figure(figsize=(10, 8))
+        disp.plot(cmap=plt.cm.Blues, values_format='d')
+        plt.title(f'Confusion Matrix {language_group}')
+        plt.xticks(rotation=90)
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+
+        plt.show()
+
+
 
 def performance_over_tokens(model, dataloaders, config):
     """
@@ -106,9 +118,6 @@ def main(args):
 
     if args.dev_mode:
         config['num_languages'] = 4
-        languages = ['eng', 'deu', 'fra', 'nld']
-    else:
-        languages = LANGUAGE_CODES
 
     dataloaders = get_dataloaders(tokenize_datasets=args.tokenize_datasets,
                                     dev_mode=args.dev_mode, batch_size=256, drop_last=True)
@@ -123,7 +132,7 @@ def main(args):
     if args.experiment == 'performance_over_tokens':
         performance_over_tokens(model, dataloaders, config)
     elif args.experiment == 'confusion_matrix':
-        plot_confusion_matrix(model, dataloaders, config, languages)
+        plot_confusion_matrix(model, dataloaders, config)
     elif args.experiment == 'test':
         print('Running testing experiment...')
     elif args.experiment == 'train_test':

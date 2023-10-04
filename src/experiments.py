@@ -111,7 +111,7 @@ def main(args):
         languages = LANGUAGE_CODES
 
     dataloaders = get_dataloaders(tokenize_datasets=args.tokenize_datasets,
-                                    dev_mode=args.dev_mode, batch_size=1)
+                                    dev_mode=args.dev_mode, batch_size=256, drop_last=True)
 
     if config['model'] == 'lstm':
         model = SimpleLSTM(config)
@@ -123,7 +123,6 @@ def main(args):
     if args.experiment == 'performance_over_tokens':
         performance_over_tokens(model, dataloaders, config)
     elif args.experiment == 'confusion_matrix':
-        assert args.tokenize_datasets, 'Need a tokenized dataset, use flag --tokenize_datasets'
         plot_confusion_matrix(model, dataloaders, config, languages)
     elif args.experiment == 'test':
         print('Running testing experiment...')
@@ -149,7 +148,7 @@ if __name__ == '__main__':
         '--model_checkpoint',
         type=str,
         help='Model checkpoint to use',
-        default='src/checkpoints/model_4.pt'
+        default='src/checkpoints/lstm_19.pt'
     )
 
     parser.add_argument(
@@ -166,7 +165,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--tokenize_datasets',
-        action='store_true',
+        action='store_false',
         help='Tokenize dataset (true by default)',
     )
 

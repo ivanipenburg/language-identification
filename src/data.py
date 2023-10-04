@@ -1,4 +1,5 @@
 import os
+import pickle
 
 from datasets import load_dataset
 from torch.utils.data import DataLoader
@@ -119,7 +120,7 @@ def preprocess_datasets(datasets, train_BPE_flag, languages=None):
 
     return tokenized_datasets
 
-def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batch_size=32):
+def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batch_size=32, drop_last=False):
     """
     Function that loads the dataloaders
 
@@ -141,10 +142,28 @@ def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batc
         for split in datasets:
             datasets[split] = datasets[split].filter(lambda example: example['label'] in languages)
 
+        # Preprocess the dataset if necesarry
+        if tokenize_datasets:
+            if os.path.isfile(DATA_DIR + '/tokenized_dev_dataset'):
+                # Load the tokenized datasets from the pickle file
+                with open(DATA_DIR + '/tokenized_dev_dataset', "rb") as file:
+                    datasets = pickle.load(file)
+            else:
+                datasets = preprocess_datasets(datasets, train_BPE, languages)
+                with open(DATA_DIR + '/tokenized_dev_dataset', "wb") as file:
+                    pickle.dump(datasets, file)
 
-    # Preprocess the dataset
-    if tokenize_datasets:
-        datasets = preprocess_datasets(datasets, train_BPE, languages)
+    else:
+        # Preprocess the dataset if necesarry
+        if tokenize_datasets:
+            if os.path.isfile(DATA_DIR + '/tokenized_dataset'):
+                # Load the tokenized datasets from the pickle file
+                with open(DATA_DIR + '/tokenized_dataset', "rb") as file:
+                    datasets = pickle.load(file)
+            else:
+                datasets = preprocess_datasets(datasets, train_BPE, languages)
+                with open(DATA_DIR + '/tokenized_dataset', "wb") as file:
+                    pickle.dump(datasets, file)
 
     # Create the dataloaders
     dataloaders = {
@@ -152,6 +171,7 @@ def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batc
             datasets[split],
             batch_size=batch_size,
             shuffle=True,
+            drop_last=drop_last
         )
         for split in datasets
     }

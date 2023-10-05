@@ -15,7 +15,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--experiment",
-                "confusion_matrix"
+                "most_confused"
             ],
             "justMyCode": true
         }

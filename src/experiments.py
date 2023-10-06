@@ -28,7 +28,7 @@ def plot_confusion_matrix(model, dataloaders, config, languages):
             inputs = batch['input_ids'].to(config['device'])
             labels = batch['label'].to(config['device'])
 
-            logits, hidden = model(inputs.to(config['device']), hidden)
+            logits, _hidden = model(inputs.to(config['device']))
             prediction = torch.argmax(logits, dim=-1)
 
             true_labels.extend(labels.cpu().numpy())
@@ -88,6 +88,44 @@ def performance_over_tokens(model, dataloaders, config, groups=None, int_to_labe
     plt.plot(confidence_per_token)
     plt.xlabel('Number of tokens')
     plt.ylabel('Confidence')
+    plt.show()
+
+
+def performance_over_tokens_WORKING(model, dataloaders, config, groups=None, int_to_label=None):
+    """
+    Function that plots the performance of the model over the number of tokens
+    """
+    correct_per_token = torch.zeros(size=(200, 128))
+
+    count = 0
+    hidden = None
+
+    model = model.to(config['device'])
+    model.eval()
+
+    with torch.no_grad():
+        for batch in tqdm(dataloaders['test']):
+            if count >= 200:
+                break
+
+            count += 1
+
+            labels = batch['label'].to(config['device'])
+            inputs = batch['input_ids'].to(config['device'])
+
+            for i in range(0, 128):
+                inpt = inputs[:,:i+1]
+                logits, _hidden = model(inpt)
+                prediction = torch.argmax(logits, dim=-1)
+
+                if prediction == labels.squeeze():
+                    correct_per_token[count-1, i] += 1
+
+
+    accuracy_per_token = torch.sum(correct_per_token, dim=0) / 200
+    plt.plot(range(0, 128), accuracy_per_token)
+    plt.xlabel('Number of tokens')
+    plt.ylabel('Accuracy')
     plt.show()
 
 # def performance_over_tokens(model, dataloaders, config, groups=None, int_to_label=None):
@@ -165,6 +203,8 @@ def main(args):
         'transformer_n_heads': 8,
         'transformer_layers': 2
     }
+
+    print(vars(args))
 
     if args.dev_mode:
         config['num_languages'] = 4

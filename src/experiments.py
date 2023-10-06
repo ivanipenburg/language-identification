@@ -3,153 +3,152 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-# from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 from tqdm import tqdm
 
 from data import LANGUAGE_CODES, get_dataloaders
 from models import SimpleLSTM, SimpleTransformer
 from stream import predict_streaming_batch
+from train import evaluate
 
+def plot_confusion_matrix(model, dataloaders, config, languages):
+    """
+    Function that creates the confusion matrix
+    """
 
-# def plot_confusion_matrix(model, dataloaders, config, languages):
-    # """
-    # Function that creates the confusion matrix
-    # """
+    model.to(config['device'])
+    model.eval()
+    hidden = None
 
-    # model.to(config['device'])
-    # model.eval()
-    # hidden = None
+    true_labels = []
+    predicted_labels = []
 
-    # true_labels = []
-    # predicted_labels = []
+    with torch.no_grad():
+        for batch in tqdm(dataloaders['test']):
+            inputs = batch['input_ids'].to(config['device'])
+            labels = batch['label'].to(config['device'])
 
-    # with torch.no_grad():
-    #     for batch in tqdm(dataloaders['test']):
-    #         inputs = batch['input_ids'].to(config['device'])
-    #         labels = batch['label'].to(config['device'])
+            logits, hidden = model(inputs.to(config['device']), hidden)
+            prediction = torch.argmax(logits, dim=-1)
 
-    #         logits, hidden = model(inputs.to(config['device']), hidden)
-    #         prediction = torch.argmax(logits, dim=-1)
+            true_labels.extend(labels.cpu().numpy())
+            predicted_labels.extend(prediction.cpu().numpy())
 
-    #         true_labels.extend(labels.cpu().numpy())
-    #         predicted_labels.extend(prediction.cpu().numpy())
+    # Compute the confusion matrix
+    confusion = confusion_matrix(true_labels, predicted_labels, labels=np.arange(len(languages)))
 
-    # # Compute the confusion matrix
-    # confusion = confusion_matrix(true_labels, predicted_labels, labels=np.arange(len(languages)))
+    # Create a ConfusionMatrixDisplay
+    disp = ConfusionMatrixDisplay(confusion, display_labels=languages)
 
-    # # Create a ConfusionMatrixDisplay
-    # disp = ConfusionMatrixDisplay(confusion, display_labels=languages)
-
-    # # Plot the confusion matrix
-    # plt.figure(figsize=(10, 8))
-    # disp.plot(cmap=plt.cm.Blues, values_format='d')
-    # plt.title('Confusion Matrix')
-    # plt.xlabel('Predicted')
-    # plt.ylabel('True')
-    # plt.show()
-
-# def performance_over_tokens(model, dataloaders, config, groups=None, int_to_label=None):
-#     """
-#     Function that plots the performance of the model over the number of tokens
-#     """
-#     confidence_per_token = []
-#     correct_per_token = []
-#     total_per_token = []
-
-#     for batch in tqdm(dataloaders['test']):
-#         predictions, labels, confidences = predict_streaming_batch(batch, model, config)
-
-#         for i, prediction in enumerate(predictions[:64]):
-#             if i >= len(correct_per_token):
-#                 correct_per_token.append([])
-#                 total_per_token.append([])
-#                 confidence_per_token.append([])
-#             if prediction == labels:
-#                 correct_per_token[i].append(1)
-#             else:
-#                 correct_per_token[i].append(0)
-
-#             total_per_token[i].append(1)
-#             confidence_per_token[i].append(confidences[i][0][prediction])
-
-#     accuracy_per_token = [np.sum(correct) / np.sum(total) for correct, total in zip(correct_per_token, total_per_token)]
-#     confidence_per_token = [np.mean(confidence) for confidence in confidence_per_token]
-
-#     plt.plot(accuracy_per_token)
-#     plt.xlabel('Number of tokens')
-#     plt.ylabel('Accuracy')
-#     plt.show()
-
-#     plt.plot(confidence_per_token)
-#     plt.xlabel('Number of tokens')
-#     plt.ylabel('Confidence')
-#     plt.show()
+    # Plot the confusion matrix
+    plt.figure(figsize=(10, 8))
+    disp.plot(cmap=plt.cm.Blues, values_format='d')
+    plt.title('Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.show()
 
 def performance_over_tokens(model, dataloaders, config, groups=None, int_to_label=None):
     """
-    Function that plots the performance of the model over the number of tokens for different groups.
+    Function that plots the performance of the model over the number of tokens
     """
-    if groups is None or int_to_label is None:
-        raise ValueError("Both 'groups' and 'int_to_label' must be provided.")
+    confidence_per_token = []
+    correct_per_token = []
+    total_per_token = []
 
-    # Initialize data containers for each group
-    group_data = {group_name: {'correct_per_token': [], 'total_per_token': [], 'confidence_per_token': []}
-                  for group_name in groups.keys()}
-
-    print(int_to_label)
-
-    # Get all the unique value in dict of lists
-    group_languages = set([language for languages in groups.values() for language in languages])
-    print(group_languages)
+    count = 0
 
     for batch in tqdm(dataloaders['test']):
-        label = int_to_label[batch['label'].item()]
-        if label not in group_languages:
-            continue
-
+        count += 1
+        if count > 200:
+            break
         predictions, labels, confidences = predict_streaming_batch(batch, model, config)
 
-        for i, prediction in enumerate(predictions[:64]):
-            for group_name, group_labels in groups.items():
-                if label in group_labels:
-                    if i >= len(group_data[group_name]['correct_per_token']):
-                        group_data[group_name]['correct_per_token'].append([])
-                        group_data[group_name]['total_per_token'].append([])
-                        group_data[group_name]['confidence_per_token'].append([])
+        for i, prediction in enumerate(predictions):
+            if i >= len(correct_per_token):
+                correct_per_token.append([])
+                total_per_token.append([])
+                confidence_per_token.append([])
+            if prediction == labels:
+                correct_per_token[i].append(1)
+            else:
+                correct_per_token[i].append(0)
 
-                    if prediction == labels:
-                        group_data[group_name]['correct_per_token'][i].append(1)
-                    else:
-                        group_data[group_name]['correct_per_token'][i].append(0)
+            total_per_token[i].append(1)
+            confidence_per_token[i].append(confidences[i][0][prediction])
 
-                    group_data[group_name]['total_per_token'][i].append(1)
-                    group_data[group_name]['confidence_per_token'][i].append(confidences[i][0][prediction])
-                    
-                    break
+    accuracy_per_token = [np.sum(correct) / np.sum(total) for correct, total in zip(correct_per_token, total_per_token)]
+    confidence_per_token = [np.mean(confidence) for confidence in confidence_per_token]
 
-    # Plot performance for each group
-    for group_name, data in group_data.items():
-        accuracy_per_token = [np.sum(correct) / np.sum(total) for correct, total in zip(data['correct_per_token'], data['total_per_token'])]
-        confidence_per_token = [np.mean(confidence) for confidence in data['confidence_per_token']]
-
-        plt.plot(accuracy_per_token, label=group_name)
-
+    plt.plot(accuracy_per_token)
     plt.xlabel('Number of tokens')
     plt.ylabel('Accuracy')
-    plt.legend(loc='upper right')
-    plt.savefig('plots/accuracy_per_token.png')
+    plt.show()
 
-    # Plot confidence for each group
-    for group_name, data in group_data.items():
-        confidence_per_token = [np.mean(confidence) for confidence in data['confidence_per_token']]
-
-        plt.plot(confidence_per_token, label=group_name)
-
+    plt.plot(confidence_per_token)
     plt.xlabel('Number of tokens')
     plt.ylabel('Confidence')
-    plt.legend(loc='lower right')
-    plt.savefig('plots/confidence_per_token.png')
+    plt.show()
 
+# def performance_over_tokens(model, dataloaders, config, groups=None, int_to_label=None):
+#     """
+#     Function that plots the performance of the model over the number of tokens for different groups.
+#     """
+#     # Groups is a dict of the form {'Group name': ['lang1', 'lang2', ...], ...}
+#     # int_to_label is a dict of the form {0: 'lang1', 1: 'lang2', ...}
+#     if groups is None:
+#         groups = {'All': LANGUAGE_CODES}
+#     if int_to_label is None:
+#         int_to_label = {i: code for i, code in enumerate(LANGUAGE_CODES)}
+
+#     count = 0
+
+#     languages = [lang for group in groups for lang in groups[group]]
+
+#     # For each group, have a list of 64 zeroes
+#     confidence_per_token = {group: [0 for _ in range(64)] for group in groups}
+#     correct_per_token = {group: [0 for _ in range(64)] for group in groups}
+#     total_per_token = {group: [0 for _ in range(64)] for group in groups}
+
+
+#     print(confidence_per_token)
+
+#     for batch in tqdm(dataloaders['test']):
+#         # If label is not in the list of any group, skip this batch
+#         label = int_to_label[batch['label'].item()]
+#         if label not in languages:
+#             continue
+        
+
+#         count += 1
+#         print(count)
+#         if count > 500:
+#             break
+#         predictions, labels, confidences = predict_streaming_batch(batch, model, config)
+
+#         for i, prediction in enumerate(predictions[:64]):
+#             for group in groups:
+#                 if label in groups[group]:
+#                     if prediction == labels:
+#                         correct_per_token[group][i] += 1
+#                     total_per_token[group][i] += 1
+#                     confidence_per_token[group][i] += confidences[i][0][prediction]
+#     accuracy_per_token = {group: [correct / total for correct, total in zip(correct_per_token[group], total_per_token[group])] for group in groups}
+#     confidence_per_token = {group: [confidence / total for confidence, total in zip(confidence_per_token[group], total_per_token[group])] for group in groups}
+
+#     for group in groups:
+#         plt.plot(accuracy_per_token[group], label=group)
+#     plt.xlabel('Number of tokens')
+#     plt.ylabel('Accuracy')
+#     plt.legend()
+#     plt.show()
+
+#     for group in groups:
+#         plt.plot(confidence_per_token[group], label=group)
+#     plt.xlabel('Number of tokens')
+#     plt.ylabel('Confidence')
+#     plt.legend()
+#     plt.show()
 
 
 def main(args):
@@ -190,6 +189,13 @@ def main(args):
         'Sino-Tibetan': ['cmn', 'yue', 'wuu', 'bod', 'hak'],
     }
 
+    TEMP_GROUP = {
+        'Dutch': ['nld'],
+        'English': ['eng'],
+        'German': ['deu'],
+        'French': ['fra'],
+    }
+
     SLAVIC_CYRILLIC_GROUPS = {
         'Russian': ['rus'],
         'Bulgarian': ['bul'],
@@ -223,7 +229,7 @@ def main(args):
     }
 
     if args.experiment == 'performance_over_tokens':
-        performance_over_tokens(model, dataloaders, config, LANGUAGE_GROUPS, int_to_label)
+        performance_over_tokens(model, dataloaders, config, TEMP_GROUP, int_to_label)
     elif args.experiment == 'confusion_matrix':
         assert args.tokenize_datasets, 'Need a tokenized dataset, use flag --tokenize_datasets'
         plot_confusion_matrix(model, dataloaders, config, languages)

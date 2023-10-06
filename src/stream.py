@@ -9,10 +9,10 @@ def predict_streaming_batch(batch, model, config):
     hidden = None
     predictions = []
     confidences = []
+    correct = []
     with torch.no_grad():
         for input_id in batch['input_ids'][0]:
-            # If input_id is 30000, it is a padding token
-            if input_id == 30000:
+            if input_id == 30000: # padding token
                 break
 
             input_id = input_id.unsqueeze(0).unsqueeze(0)
@@ -22,6 +22,7 @@ def predict_streaming_batch(batch, model, config):
             confidence = torch.softmax(logits, dim=-1)
             predictions.append(prediction)
             confidences.append(confidence)
+            correct.append(prediction == labels)
     return predictions, labels, confidences
 
 

@@ -75,7 +75,7 @@ def performance_over_thresholds(model, dataloaders, config):
                 if count >= 1000:
                     break
                 count += 1
-                
+
                 labels = batch['label'].to(config['device'])
                 inputs = batch['input_ids'].to(config['device'])
 
@@ -141,6 +141,83 @@ def performance_over_tokens(model, dataloaders, config, groups=None, int_to_labe
     plt.ylabel('Accuracy')
     plt.show()
 
+def performance_over_thresholds_per_group(model, dataloaders, config, groups, int_to_label):
+    '''
+    Plot the performance over different thresholds
+    '''
+    thresholds = np.arange(0.1, 1, 0.1)
+
+    num_examples = 500
+
+    model = model.to(config['device'])
+    model.eval()
+
+    accuracies = {group: [] for group in groups}
+    number_of_tokens_for_prediction = {group: [] for group in groups}
+
+    with torch.no_grad():
+        for threshold in thresholds:
+            group_count = {group: 0 for group in groups}
+
+            print(f'Threshold: {threshold}')
+            correct = {group: 0 for group in groups}
+            num_tokens = {group: [] for group in groups}
+
+            for batch in tqdm(dataloaders['test']):
+                label = int_to_label[batch['label'].item()]
+
+                # break if we have seen num_examples samples for each group
+                if all(group_count[group] >= num_examples for group in groups):
+                    break
+
+                if not any(label in group for group in groups.values()):
+                    continue
+
+                # Get current group
+                group = [group for group in groups if label in groups[group]][0]
+
+                # Skip if we have already seen num_examples samples for this group
+                if group_count[group] >= num_examples:
+                    continue
+
+                group_count[group] += 1
+
+                labels = batch['label'].to(config['device'])
+                inputs = batch['input_ids'].to(config['device'])
+
+                for i in range(0, 128):
+                    inpt = inputs[:,:i+1]
+                    logits, _ = model(inpt)
+                    prediction = torch.argmax(logits, dim=-1)
+                    confidence = torch.softmax(logits, dim=-1)
+
+                    if confidence[0][prediction][0] > threshold:
+                        if prediction == labels.squeeze():
+                            correct[group] += 1
+                        break
+
+                num_tokens[group].append(i)
+
+            for group in groups:
+                accuracies[group].append(correct[group] / group_count[group])
+                number_of_tokens_for_prediction[group].append(np.mean(num_tokens[group]))
+
+    plt.figure()
+    for group in groups:
+        plt.plot(thresholds, accuracies[group], label=group)
+    plt.xlabel('Threshold')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.show()
+
+    plt.figure()
+    for group in groups:
+        plt.plot(thresholds, number_of_tokens_for_prediction[group], label=group)
+    plt.xlabel('Threshold')
+    plt.ylabel('Number of tokens for prediction')
+    plt.legend()
+    plt.show()
+
 def performance_over_tokens_per_language_group(model, dataloaders, config, groups=None, int_to_label=None):
     num_examples = 200
     num_groups = len(groups)
@@ -182,7 +259,7 @@ def performance_over_tokens_per_language_group(model, dataloaders, config, group
             for i in range(0, 128):
                 inpt = inputs[:,:i+1]
                 logits, _ = model(inpt)
-                prediction = torch.argmax(logits, dim=-1) 
+                prediction = torch.argmax(logits, dim=-1)
                 confidence = torch.softmax(logits, dim=-1)
 
                 if prediction == labels.squeeze():
@@ -242,8 +319,6 @@ def main(args):
 
     model.load_state_dict(torch.load(args.model_checkpoint, map_location=config['device']))
 
-
-
     if args.experiment == 'performance_over_tokens':
         if args.batch_size != 1:
             print('Batch size must be 1 for this experiment!')
@@ -254,6 +329,8 @@ def main(args):
             print('Batch size must be 1 for this experiment!')
             return
         performance_over_tokens_per_language_group(model, dataloaders, config, LANGUAGE_GROUPS, int_to_label)
+    elif args.experiment == 'performance_over_thresholds_per_group':
+        performance_over_thresholds_per_group(model, dataloaders, config, LANGUAGE_GROUPS, int_to_label)
     elif args.experiment == 'confusion_matrix':
         assert args.tokenize_datasets, 'Need a tokenized dataset, use flag --tokenize_datasets'
         plot_confusion_matrix(model, dataloaders, config, languages)
@@ -279,7 +356,7 @@ if __name__ == '__main__':
         '--model_checkpoint',
         type=str,
         help='Model checkpoint to use',
-        default='src/checkpoints/model_4.pt'
+        default='checkpoints/model_4.pt'
     )
 
     parser.add_argument(
@@ -296,8 +373,9 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '--tokenize_datasets',
-        action='store_true',
+        action='store',
         help='Tokenize dataset (true by default)',
+        default=True
     )
 
     parser.add_argument(

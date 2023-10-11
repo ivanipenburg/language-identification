@@ -16,6 +16,18 @@ LANGUAGE_GROUPS = {
     'Sino-Tibetan': ['cmn', 'yue', 'wuu', 'bod', 'hak'],
 }
 
+def calc_avg_groups(data, groups):
+    avg_over_steps = []
+    steps = len(data[list(groups.keys())[0]])
+
+    for i in range(steps):
+        total = 0
+        for group in groups:
+            total += data[group][i]
+        avg_over_steps.append(total / len(groups.keys()))
+
+    return avg_over_steps
+
 def plot_confusion_matrix(model, dataloaders, config, languages):
     """
     Function that creates the confusion matrix
@@ -203,23 +215,33 @@ def performance_over_thresholds_per_group(model, dataloaders, config, groups, in
                 number_of_tokens_for_prediction[group].append(np.mean(num_tokens[group]))
 
     plt.figure()
+    plt.plot(thresholds, calc_avg_groups(accuracies, groups), label="Average", linestyle='--', linewidth=2, color='lightgrey')
+
     for group in groups:
         plt.plot(thresholds, accuracies[group], label=group)
+
     plt.xlabel('Threshold')
+    plt.xticks(thresholds)
     plt.ylabel('Accuracy')
     plt.legend()
     plt.show()
 
     plt.figure()
+    plt.plot(thresholds, calc_avg_groups(number_of_tokens_for_prediction, groups), label="Average", linestyle='--', linewidth=2, color='lightgrey')
+
     for group in groups:
         plt.plot(thresholds, number_of_tokens_for_prediction[group], label=group)
+
+
     plt.xlabel('Threshold')
+    plt.xticks(thresholds)
+
     plt.ylabel('Number of tokens for prediction')
     plt.legend()
     plt.show()
 
 def performance_over_tokens_per_language_group(model, dataloaders, config, groups=None, int_to_label=None):
-    num_examples = 200
+    num_examples = 500
     num_groups = len(groups)
     correct_per_token = torch.zeros(size=(num_groups, num_examples, 128))
     confidence_per_token = torch.zeros(size=(num_groups, num_examples, 128))
@@ -234,6 +256,11 @@ def performance_over_tokens_per_language_group(model, dataloaders, config, group
     with torch.no_grad():
         for batch in tqdm(dataloaders['test']):
             label = int_to_label[batch['label'].item()]
+
+            # break if we have seen num_examples samples for each group
+            if all(group_count[group] >= num_examples for group in groups):
+                break
+
             if not any(label in group for group in groups.values()):
                 continue
 
@@ -246,12 +273,7 @@ def performance_over_tokens_per_language_group(model, dataloaders, config, group
             if group_count[group] >= num_examples:
                 continue
 
-            # break if we have seen num_examples samples for each group
-            if all(group_count[group] >= num_examples for group in groups):
-                break
-
             group_count[group] += 1
-            print(group_count)
 
             labels = batch['label'].to(config['device'])
             inputs = batch['input_ids'].to(config['device'])
@@ -269,6 +291,8 @@ def performance_over_tokens_per_language_group(model, dataloaders, config, group
     accuracy_per_token = torch.sum(correct_per_token, dim=1) / num_examples
     confidence_per_token = torch.sum(confidence_per_token, dim=1) / num_examples
 
+    plt.plot(range(1, 128), calc_avg_groups(accuracy_per_token, groups), label="Average", linestyle='--', linewidth=2, color='lightgrey')
+
     for i, group in enumerate(groups):
         plt.plot(range(1, 128), accuracy_per_token[i][1:], label=group)
 
@@ -276,6 +300,8 @@ def performance_over_tokens_per_language_group(model, dataloaders, config, group
     plt.ylabel('Accuracy')
     plt.legend()
     plt.show()
+
+    plt.plot(range(1, 128), calc_avg_groups(confidence_per_token, groups), label="Average", linestyle='--', linewidth=2, color='lightgrey')
 
     for i, group in enumerate(groups):
         plt.plot(range(1, 128), confidence_per_token[i][1:], label=group)

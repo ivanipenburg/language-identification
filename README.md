@@ -5,7 +5,7 @@ pip install -r requirements.txt
 ```
 
 # Data
-Download the (https://zenodo.org/record/841984/files/wili-2018.zip?download=1)[dataset] and extract it into a folder called `data` in the root of the project.
+Download the [dataset](https://zenodo.org/record/841984/files/wili-2018.zip?download=1) and extract it into a folder called `data` in the root of the project.
 
 # Model checkpoints
 Please send a request to the author to obtain the model checkpoints.

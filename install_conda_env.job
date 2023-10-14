@@ -4,9 +4,9 @@
 #SBATCH --gpus=1
 #SBATCH --job-name=InstallEnv
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=3
+#SBATCH --cpus-per-task=1
 #SBATCH --time=04:00:00
-#SBATCH --mem=32000M
+#SBATCH --mem=8000M
 #SBATCH --output=slurm_output_%A.out
 
 module purge

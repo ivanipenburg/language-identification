@@ -62,7 +62,7 @@ def main(args):
         'transformer_layers': 2
     }
 
-    dataloaders = get_dataloaders(tokenize_datasets=args.tokenize_datasets,
+    dataloaders, _ = get_dataloaders(tokenize_datasets=args.tokenize_datasets,
                                   dev_mode=args.dev_mode)
 
     if args.dev_mode:

@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
-from torch.optim import Adam, AdamW
+from torch.optim import AdamW
 from tqdm import tqdm
 
 from data import get_dataloaders
-from models import SimpleLSTM, SimpleTransformer, TextCNN, get_parameter_count
+from models import SimpleLSTM, SimpleTransformer, get_parameter_count
 
 import argparse
 

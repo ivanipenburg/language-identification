@@ -1,15 +1,15 @@
 import os
 import pickle
-import pandas as pd
 from collections import defaultdict
 
+import pandas as pd
 from datasets import load_dataset
-from torch.utils.data import DataLoader
-from transformers import AutoTokenizer, PreTrainedTokenizerFast
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import BpeTrainer
+from torch.utils.data import DataLoader
+from transformers import PreTrainedTokenizerFast
 
 DATA_DIR = 'data'
 DATASET_NAME = 'WiLI'
@@ -123,7 +123,21 @@ def preprocess_datasets(datasets, train_BPE_flag, languages=None):
 
     return tokenized_datasets, int_to_label
 
-def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batch_size=32, drop_last=False):
+
+def tokenize_datasets(datasets, train_BPE_flag, languages=None):
+    if os.path.isfile(DATA_DIR + '/tokenized_dataset'):
+        # Load the tokenized datasets from the pickle file
+        with open(DATA_DIR + '/tokenized_dataset', "rb") as file:
+            datasets = pickle.load(file)
+    else:
+        datasets, int_to_label = preprocess_datasets(datasets, train_BPE_flag, languages)
+        with open(DATA_DIR + '/tokenized_dataset', "wb") as file:
+            pickle.dump(datasets, file)
+
+    return datasets, int_to_label
+
+
+def get_dataloaders(tokenize_datasets_flag=True, dev_mode=False, train_BPE=True, batch_size=32, drop_last=False):
     """
     Function that loads the dataloaders
 
@@ -145,28 +159,8 @@ def get_dataloaders(tokenize_datasets=True, dev_mode=False, train_BPE=True, batc
         for split in datasets:
             datasets[split] = datasets[split].filter(lambda example: example['label'] in languages)
 
-        # Preprocess the dataset if necesarry
-        if tokenize_datasets:
-            if os.path.isfile(DATA_DIR + '/tokenized_dev_dataset'):
-                # Load the tokenized datasets from the pickle file
-                with open(DATA_DIR + '/tokenized_dev_dataset', "rb") as file:
-                    datasets = pickle.load(file)
-            else:
-                datasets = preprocess_datasets(datasets, train_BPE, languages)
-                with open(DATA_DIR + '/tokenized_dev_dataset', "wb") as file:
-                    pickle.dump(datasets, file)
-
-    else:
-        # Preprocess the dataset if necesarry
-        if tokenize_datasets:
-            if os.path.isfile(DATA_DIR + '/tokenized_dataset'):
-                # Load the tokenized datasets from the pickle file
-                with open(DATA_DIR + '/tokenized_dataset', "rb") as file:
-                    datasets = pickle.load(file)
-            else:
-                datasets = preprocess_datasets(datasets, train_BPE, languages)
-                with open(DATA_DIR + '/tokenized_dataset', "wb") as file:
-                    pickle.dump(datasets, file)
+    if tokenize_datasets_flag:
+        datasets, int_to_label = tokenize_datasets(datasets, train_BPE, languages)
 
     # Create the dataloaders
     dataloaders = {

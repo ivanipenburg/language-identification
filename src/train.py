@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.optim import Adam
+from torch.optim import Adam, AdamW
 from tqdm import tqdm
 
 from data import get_dataloaders
@@ -28,7 +28,7 @@ def evaluate(dataloaders, model, config):
 
 def train(dataloaders, model, config):
     print('Starting training...')
-    optimizer = Adam(model.parameters(), lr=config['lr'])
+    optimizer = AdamW(model.parameters(), lr=config['lr'])
     loss_fn = nn.CrossEntropyLoss()
 
     for epoch in tqdm(range(config['epochs']), desc='Epochs'):
@@ -44,7 +44,7 @@ def train(dataloaders, model, config):
 
         evaluate(dataloaders, model, config)
 
-        torch.save(model.state_dict(), f'{CHECKPOINT_PATH}model_{epoch}.pt')
+        torch.save(model.state_dict(), f"{CHECKPOINT_PATH}{config['model']}_{epoch}.pt")
 
 def main(args):
     config = {
